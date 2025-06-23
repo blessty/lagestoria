@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - JAD Invest</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 350px;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #27ae60;
+      border: none;
+      color: white;
+      font-size: 1em;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #219150;
+    }
+    .error {
+      color: red;
+      min-height: 20px;
+      margin-top: 10px;
+    }
+    .register-link {
+      margin-top: 15px;
+      font-size: 0.9em;
+    }
+    .register-link a {
+      color: #2980b9;
+      text-decoration: none;
+    }
+    .register-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <h2>Iniciar sesión</h2>
+    <input type="text" id="username" placeholder="Usuario" autocomplete="off" />
+    <input type="password" id="password" placeholder="Contraseña" autocomplete="off" />
+    <button id="btnLogin">Ingresar</button>
+    <p id="errorMsg" class="error"></p>
+    <p class="register-link">¿No tienes cuenta? <a href="register.html">Regístrate aquí</a></p>
+  </div>
+
+  <script>
+    // Crear admin automáticamente si no existe
+    (function asegurarAdmin() {
+      let users = JSON.parse(localStorage.getItem('users')) || [];
+      if (!users.find(u => u.username === 'admin')) {
+        users.push({
+          username: 'admin',
+          password: 'admin123',
+          referidor: null,
+          referidos: [],
+          investment: 0,
+          retornoMensual: 0,
+          isAdmin: true
+        });
+        localStorage.setItem('users', JSON.stringify(users));
+        console.log('Admin creado automáticamente');
+      }
+    })();
+
+    function getUsers() {
+      return JSON.parse(localStorage.getItem('users')) || [];
+    }
+
+    const btnLogin = document.getElementById('btnLogin');
+    const errorMsg = document.getElementById('errorMsg');
+
+    btnLogin.addEventListener('click', () => {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+
+  errorMsg.textContent = '';
+
+  if (!username || !password) {
+    errorMsg.textContent = 'Ingrese usuario y contraseña.';
+    console.log('Error: Usuario o contraseña vacío.');
+    return;
+  }
+
+  const users = getUsers();
+  console.log('Usuarios cargados:', users);
+
+  const user = users.find(u => u.username === username && u.password === password);
+
+  if (user) {
+    localStorage.setItem('user', username);
+    console.log('Usuario encontrado:', user);
+    if(user.isAdmin) {
+      console.log('Es admin, redirigiendo a admin.html');
+      alert('Redirigiendo a admin.html');
+      window.location.href = 'admin.html';
+    } else {
+      console.log('No es admin, redirigiendo a panel.html');
+      alert('Redirigiendo a panel.html');
+      window.location.href = 'panel.html';
+    }
+  } else {
+    errorMsg.textContent = 'Usuario o contraseña incorrectos.';
+    console.log('Usuario no encontrado o contraseña incorrecta');
+  }
+});
+
+  </script>
+
+</body>
+</html>
+
+
+

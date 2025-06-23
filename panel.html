@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel - JAD Invest</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 30px; }
+    header { display: flex; justify-content: space-between; align-items: center; background-color: #2c3e50; color: white; padding: 15px 30px; border-radius: 8px; margin-bottom: 20px; }
+    .section { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    button, select, a.copy-link { padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; }
+    #logout { background: #e74c3c; color: white; }
+    #logout:hover { background: #c0392b; }
+    .copy-button { background: #2980b9; color: white; margin-left: 10px; }
+    .copy-button:hover { background: #2471a3; }
+    .share-button { background: #27ae60; color: white; margin-left: 10px; }
+    .share-button:hover { background: #219150; }
+    .referidos-list { list-style: none; padding-left: 0; max-height: 150px; overflow-y: auto; }
+    .referidos-list li { background: #ecf0f1; margin-bottom: 5px; padding: 8px; border-radius: 5px; }
+    .notice { color: #c0392b; margin-top: 10px; }
+    a.copy-link { background: #2980b9; color: white; }
+    a.copy-link:hover { background: #2471a3; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Bienvenido, <span id="usernameDisplay"></span></h1>
+  <button id="logout">Cerrar sesión</button>
+</header>
+
+<div class="section">
+  <h2>Tu inversión</h2>
+  <p>Inversión: <strong id="inversionDisplay"></strong> XAF</p>
+  <p>Retorno mensual fijo: <strong id="retornoDisplay"></strong> XAF</p>
+</div>
+
+<div class="section">
+  <h2>Aumentar inversión</h2>
+  <form id="formInversion">
+    <select id="nuevaInversion" required>
+      <option value="">Selecciona un nuevo monto</option>
+      <option value="50000">50.000 XAF</option>
+      <option value="100000">100.000 XAF</option>
+      <option value="200000">200.000 XAF</option>
+    </select>
+    <button type="submit">Actualizar inversión</button>
+  </form>
+  <p id="msgInvestFirst" class="notice" style="display:none;">Debes realizar una inversión inicial antes de poder subir de nivel.</p>
+</div>
+
+<div class="section">
+  <h2>Tu equipo (referidos)</h2>
+  <p>Número de referidos activos: <strong id="numReferidos"></strong></p>
+  <p>Bonificación por referidos: <strong id="bonificacion"></strong>%</p>
+  <ul id="referidosList" class="referidos-list"></ul>
+</div>
+
+<div class="section">
+  <h2>Tu link de referido</h2>
+  <div>
+    <a id="refLink" class="copy-link" href="#" target="_blank">Tu enlace de referido</a>
+    <button class="copy-button" id="btnCopy">Copiar</button>
+    <button class="share-button" id="btnShare">Compartir</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Resumen de beneficios anuales (12 meses)</h2>
+  <canvas id="chartGanancias" style="max-height: 300px;"></canvas>
+  <div id="resumenGanancias" style="margin-top: 20px;">
+    <strong>Resumen:</strong>
+    <ul>
+      <li>Retorno total: <span id="retornoTotal">-</span> XAF</li>
+      <li>Ganancia equipo total: <span id="gananciaEquipoTotal">-</span> XAF</li>
+      <li>Costos de gestión total: <span id="costosTotal">-</span> XAF</li>
+      <li><strong>Ganancia neta final:</strong> <span id="gananciaNetaFinal">-</span> XAF</li>
+    </ul>
+  </div>
+  <div style="margin-top: 30px;">
+    <h3>Distribución de ingresos</h3>
+    <canvas id="chartDistribucion" style="max-width: 400px;"></canvas>
+  </div>
+</div>
+
+<script>
+// Obtener usuario actual
+document.getElementById('usernameDisplay').textContent = localStorage.getItem('user') || ''; if(!localStorage.getItem('user')) location.href = 'login.html';
+
+// Funciones auxiliares
+function getUsers(){return JSON.parse(localStorage.getItem('users'))||[];} function calcularBonificacion(n){if(n>=500)return 30;if(n>=200)return25;if(n>=100)return20;if(n>=50)return15;if(n>=20)return10;if(n>=10)return7;if(n>=5)return5;return0;} function getMesesSiguientes(n=12){const m=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],h=new Date().getMonth();return Array.from({length:n},(_,i)=>m[(h+i)%12]);}
+
+// Mostrar datos e interfaces
+function mostrarDatos(){const users=getUsers(),u=users.find(x=>x.username===localStorage.getItem('user'))||{investment:0,retornoMensual:0,referidos:[]};
+ document.getElementById('inversionDisplay').textContent=u.investment.toLocaleString(); document.getElementById('retornoDisplay').textContent=u.retornoMensual.toLocaleString();
+ const form=document.getElementById('formInversion'),msg=document.getElementById('msgInvestFirst');u.investment>0?(form.style.display='block',msg.style.display='none'):(form.style.display='none',msg.style.display='block');
+ const refList=document.getElementById('referidosList'); document.getElementById('numReferidos').textContent=u.referidos.length; document.getElementById('bonificacion').textContent=calcularBonificacion(u.referidos.length); refList.innerHTML=u.referidos.length? '': '<li>No tienes referidos aún.</li>';u.referidos.forEach(r=>{const li=document.createElement('li');li.textContent=r;refList.appendChild(li);});
+}
+
+// Link referidos
+document.getElementById('refLink').href=`${location.origin+location.pathname.replace(/[^/]*$/,'')}register.html?ref=${encodeURIComponent(localStorage.getItem('user'))}`;document.getElementById('refLink').textContent=document.getElementById('refLink').href;
+
+// Copiar y compartir
+document.getElementById('btnCopy').onclick=()=>navigator.clipboard.writeText(document.getElementById('refLink').href).then(_=>alert('Link copiado al portapapeles'));
+document.getElementById('btnShare').onclick=()=>{const url=document.getElementById('refLink').href;if(navigator.share)navigator.share({title:'Únete a JAD Invest',url});else location.href=`mailto:?subject=Únete a JAD Invest&body=Visita este enlace: ${encodeURIComponent(url)}`;};
+
+// Inversión
+document.getElementById('formInversion').onsubmit=e=>{e.preventDefault();const users=getUsers(),u=users.find(x=>x.username===localStorage.getItem('user'));const val=parseInt(document.getElementById('nuevaInversion').value);if(isNaN(val)||val<=u.investment){alert('La nueva inversión debe ser mayor que la actual.');return;}u.investment=val;u.retornoMensual=val>=200000?80000:val>=100000?40000:20000;localStorage.setItem('users',JSON.stringify(users));mostrarDatos();initCharts();alert('Inversión actualizada con éxito.');};
+
+// Gráficas
+function initCharts(){const users=getUsers(),u=users.find(x=>x.username===localStorage.getItem('user')),r=u.retornoMensual,bon=calcularBonificacion(u.referidos.length),ge=Math.round(r*bon/100),cg=ge*0.1,mes=getMesesSiguientes();
+ const dG=mes.map((_,i)=>r*(i+1)),dE=mes.map((_,i)=>ge*(i+1)),dC=mes.map((_,i)=>cg*(i+1));
+ new Chart(document.getElementById('chartGanancias'),{type:'line',data:{labels:mes,datasets:[{label:'Retorno mensual',data:dG,borderColor:'#27ae60',backgroundColor:'rgba(39,174,96,0.1)',fill:true,tension:0.3},{label:'Ganancia equipo',data:dE,borderColor:'#2980b9',backgroundColor:'rgba(41,128,185,0.1)',fill:true,tension:0.3},{label:'Costos gestoría',data:dC,borderColor:'#e67e22',backgroundColor:'rgba(230,126,34,0.1)',fill:true,tension:0.3}]},options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw.toLocaleString()} XAF`}}}}});
+ const RT=dG[11],RE=dE[11],RC=dC[11],RN=RT+RE-RC;
+ document.getElementById('retornoTotal').textContent=RT.toLocaleString();document.getElementById('gananciaEquipoTotal').textContent=RE.toLocaleString();document.getElementById('costosTotal').textContent=RC.toLocaleString();document.getElementById('gananciaNetaFinal').textContent=RN.toLocaleString();
+ const ctx=document.getElementById('chartDistribucion').getContext('2d');if(window.pieChartInstance)window.pieChartInstance.destroy();window.pieChartInstance=new Chart(ctx,{type:'pie',data:{labels:['Retorno','Ganancia equipo','Costos gestoría'],datasets:[{data:[RT,RE,RC],backgroundColor:['#27ae60','#2980b9','#e67e22'],borderColor:'#fff',borderWidth:2}]},options:{plugins:{legend:{position:'bottom'}}}});
+}
+
+// Logout y init
+document.getElementById('logout').onclick=()=>{localStorage.removeItem('user');location.href='login.html';};mostrarDatos();initCharts();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

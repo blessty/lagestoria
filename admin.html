@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Panel Admin - JAD Invest</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Panel de Administrador</h1>
+    <button id="logout">Cerrar sesión</button>
+  </header>
+
+  <section>
+    <h2>Usuarios registrados</h2>
+
+    <form id="addUserForm">
+      <input type="text" id="newUsername" placeholder="Usuario" required />
+      <input type="number" id="newInvestment" placeholder="Inversión (XAF)" required />
+      <input type="text" id="newReferrer" placeholder="Referidor (opcional)" />
+      <label><input type="checkbox" id="newIsAdmin" /> ¿Es admin?</label>
+      <button type="submit">Agregar Usuario</button>
+    </form>
+
+    <div id="userTableContainer"></div>
+  </section>
+
+  <div class="modal" id="movModal">
+    <div class="modal-content">
+      <h3>Movimientos de <span id="movUser"></span></h3>
+      <table>
+        <thead>
+          <tr><th>Fecha</th><th>Tipo</th><th>Cantidad (XAF)</th></tr>
+        </thead>
+        <tbody id="movBody"></tbody>
+      </table>
+      <button onclick="closeMovModal()">Cerrar</button>
+    </div>
+  </div>
+
+  <script>
+    const user = localStorage.getItem('user');
+    if (!user) window.location.href = 'login.html';
+
+    let users = JSON.parse(localStorage.getItem('users')) || [];
+    const currentUser = users.find(u => u.username === user);
+    if (!currentUser?.isAdmin) {
+      alert('No autorizado.');
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    }
+
+    function saveUsers(list) {
+      localStorage.setItem('users', JSON.stringify(list));
+    }
+
+    function renderTable() {
+      users = JSON.parse(localStorage.getItem('users')) || [];
+      const container = document.getElementById('userTableContainer');
+      container.innerHTML = '';
+
+      if (users.length === 0) {
+        container.innerHTML = '<p class="no-users">No hay usuarios registrados.</p>';
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead><tr>
+          <th>Usuario</th><th>Inversión</th><th>Retorno</th>
+          <th>Referidos</th><th>Referidor</th><th>Acciones</th>
+        </tr></thead>`;
+      const tbody = document.createElement('tbody');
+
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${u.username}</td>
+          <td>${u.investment.toLocaleString()}</td>
+          <td>${u.retornoMensual.toLocaleString()}</td>
+          <td>${u.referidos.length}</td>
+          <td>${u.referidor || '-'}</td>`;
+
+        const actions = document.createElement('td');
+        actions.className = 'actions';
+
+        const btnMov = document.createElement('button');
+        btnMov.textContent = 'Movimientos';
+        btnMov.onclick = () => showMovimientos(u.username);
+
+        const btnDel = document.createElement('button');
+        btnDel.textContent = 'Eliminar';
+        btnDel.onclick = () => deleteUser(u.username);
+
+        actions.appendChild(btnMov);
+        if (u.username !== user) actions.appendChild(btnDel);
+
+        tr.appendChild(actions);
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      container.appendChild(table);
+    }
+
+    function deleteUser(username) {
+      if (!confirm('¿Eliminar a ' + username + '?')) return;
+      users = users.filter(u => u.username !== username);
+      saveUsers(users);
+      renderTable();
+    }
+
+    function registrarMovimiento(user, tipo, cantidad) {
+      const key = `movimientos_${user}`;
+      const movs = JSON.parse(localStorage.getItem(key)) || [];
+      movs.push({ tipo, cantidad, fecha: new Date().toISOString().split('T')[0] });
+      localStorage.setItem(key, JSON.stringify(movs));
+    }
+
+    document.getElementById('addUserForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const username = newUsername.value.trim();
+      const investment = parseFloat(newInvestment.value);
+      const referidor = newReferrer.value.trim();
+      const isAdmin = newIsAdmin.checked;
+
+      if (users.some(u => u.username === username)) return alert('Ya existe.');
+      const nuevo = {
+        username, investment,
+        retornoMensual: Math.floor(investment * 0.10),
+        referidos: [], referidor: referidor || null,
+        isAdmin
+      };
+      users.push(nuevo);
+      saveUsers(users);
+      registrarMovimiento(username, 'inversión inicial', investment);
+      e.target.reset();
+      renderTable();
+    });
+
+    function showMovimientos(username) {
+      const data = JSON.parse(localStorage.getItem(`movimientos_${username}`)) || [];
+      const tbody = document.getElementById('movBody');
+      tbody.innerHTML = '';
+      document.getElementById('movUser').textContent = username;
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3">Sin movimientos</td></tr>';
+      } else {
+        data.forEach(m => {
+          const row = document.createElement('tr');
+          row.innerHTML = `<td>${m.fecha}</td><td>${m.tipo}</td><td>${m.cantidad.toLocaleString()}</td>`;
+          tbody.appendChild(row);
+        });
+      }
+      document.getElementById('movModal').style.display = 'flex';
+    }
+
+    function closeMovModal() {
+      document.getElementById('movModal').style.display = 'none';
+    }
+
+    document.getElementById('logout').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      window.location.href = 'login.html';
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
+

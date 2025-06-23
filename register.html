@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registro - JAD Invest</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+    input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 1em; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background-color: #2980b9; border: none; color: white; font-size: 1em; border-radius: 5px; cursor: pointer; }
+    button:hover { background-color: #2471a3; }
+    .error { color: red; min-height: 20px; margin-top: 10px; }
+    .success { color: green; min-height: 20px; margin-top: 10px; }
+    .login-link { margin-top: 15px; font-size: 0.9em; }
+    .login-link a { color: #2980b9; text-decoration: none; }
+    .login-link a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Crear cuenta</h2>
+    <input type="text" id="newUsername" placeholder="Usuario" autocomplete="off" />
+    <input type="password" id="newPassword" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="off" />
+    <label for="investment">Seleccione inversión:</label>
+    <select id="investment">
+      <option value="">-- Seleccione inversión --</option>
+      <option value="50000">50,000 XAF</option>
+      <option value="100000">100,000 XAF</option>
+      <option value="200000">200,000 XAF</option>
+    </select>
+    <button id="btnRegister">Registrarse</button>
+    <p id="errorMsg" class="error"></p>
+    <p id="successMsg" class="success"></p>
+    <p class="login-link">¿Ya tienes cuenta? <a href="index.html">Iniciar sesión</a></p>
+  </div>
+
+  <script>
+    // Obtener referidor desde la URL (ej. register.html?ref=usuario)
+    const urlParams = new URLSearchParams(window.location.search);
+    const referidor = urlParams.get('ref');
+
+    // Funciones de localStorage
+    function getUsers() { return JSON.parse(localStorage.getItem('users')) || []; }
+    function saveUsers(u) { localStorage.setItem('users', JSON.stringify(u)); }
+
+    // Inicializar admin si no existe
+    (function initAdmin() {
+      const users = getUsers();
+      if (!users.find(u => u.username === 'admin')) {
+        users.push({ username:'admin', password:'admin123', investment:0, retornoMensual:0, referidor:null, referidos:[], isAdmin:true });
+        saveUsers(users);
+      }
+    })();
+
+    document.getElementById('btnRegister').addEventListener('click', () => {
+      const username = document.getElementById('newUsername').value.trim();
+      const password = document.getElementById('newPassword').value;
+      const investment = document.getElementById('investment').value;
+      const errorMsg = document.getElementById('errorMsg');
+      const successMsg = document.getElementById('successMsg');
+      errorMsg.textContent = '';
+      successMsg.textContent = '';
+
+      if (!username || !password || !investment) {
+        errorMsg.textContent = 'Por favor completa todos los campos.'; return;
+      }
+      if (password.length < 6) {
+        errorMsg.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return;
+      }
+
+      const users = getUsers();
+      if (users.find(u => u.username === username)) {
+        errorMsg.textContent = 'El usuario ya existe.'; return;
+      }
+
+      // Determinar retorno según inversión fija
+      let retorno;
+      switch (investment) {
+        case '200000': retorno = 80000; break;
+        case '100000': retorno = 40000; break;
+        case '50000': retorno = 20000; break;
+        default: retorno = 0;
+      }
+
+      // Crear usuario nuevo con referidor si aplica
+      const newUser = { 
+        username, 
+        password, 
+        investment: Number(investment), 
+        retornoMensual: retorno, 
+        referidor: referidor || null, 
+        referidos: [], 
+        isAdmin: false 
+      };
+      users.push(newUser);
+
+      // Agregar al referidor
+      if (referidor) {
+        const refUser = users.find(u => u.username === referidor);
+        if (refUser) refUser.referidos.push(username);
+      }
+
+      saveUsers(users);
+      successMsg.textContent = 'Registro exitoso. Ahora puedes iniciar sesión.';
+      // Limpiar campos
+      document.getElementById('newUsername').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('investment').value = '';
+    });
+  </script>
+</body>
+</html>
+
+
+
